@@ -6,6 +6,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 
 export default function HomeScreens({ isAtTop}) {
+  const [type, setType] = useState('penjualan');
   return (
     <LinearGradient
       colors={['#0C324D', '#061b29', '#020202']}
@@ -14,8 +15,8 @@ export default function HomeScreens({ isAtTop}) {
       style={styles.container}
       >
         <Header title="Home Screen"/>
-        <Debt curency="Rp" amount="1.400" isAtTop={isAtTop} />
-        <InvoiceCard isAtTop={isAtTop}/>
+        <Debt curency="Rp" amount="1.400" isAtTop={isAtTop} type={type} />
+        <InvoiceCard isAtTop={isAtTop} setType={setType} type={type}/>
     </LinearGradient>
   );
 }
@@ -35,7 +36,7 @@ const Header = ({ title }) => {
   );
 };
 
-const Debt = ({ curency, amount, isAtTop}) => {
+const Debt = ({ curency, amount, isAtTop, type}) => {
   const animatedStyle = useAnimatedStyle(() => {
     return {
       opacity: withTiming(isAtTop ? 0 : 1),  // fade out kalau isAtTop true
@@ -68,14 +69,14 @@ const Debt = ({ curency, amount, isAtTop}) => {
       </View>
       <Animated.View style={[DebtStyle.information, animatedStyle]}>
         <CircleInformation title="Role" subTitle="Serkertaris" iconName="wallet-outline" size={24} color="#007bff" />
-        <CircleInformation title="Type" subTitle="Penjualan" iconName="cash-outline" size={24} color="#28a745" />
+        <CircleInformation title="Type" subTitle={type} iconName="cash-outline" size={24} color="#28a745" />
         <CircleInformation title="Jangka" subTitle="Bulan" iconName="card-outline" size={24} color="#ffc107" />
       </Animated.View>
     </View>
   );
 }
 
-const CircleInformation = ({ title, subTitle, iconName, size, color }) => {
+const CircleInformation = ({ title, subTitle, iconName, size, color, type }) => {
   const CircleIcon = ({iconName}) => {
     return (
       <View style={{ borderRadius: '100%', backgroundColor: 'rgba(255, 255, 255, 0.05)', padding: 10, width: size + 20, }}>
@@ -103,14 +104,13 @@ const CircleButton = ({ onPress, iconName, style }) => {
   );
 };
 
-const InvoiceCard = ({isAtTop}) => {
-  const [type, setType] = useState('penjualan'); // default type
+const InvoiceCard = ({isAtTop, setType, type}) => {
   const changeType = () => {
-    if (type === 'penjualan') {
-      setType('pembelian');
+    if (type === 'Penjualan') {
+      setType('Pembelian');
     }
     else {
-      setType('penjualan');
+      setType('Penjualan');
     }
   }
 
@@ -128,11 +128,11 @@ const InvoiceCard = ({isAtTop}) => {
     <Animated.View style={[invoiceCardStyles.container, animatedStyle]}>
       {/* Side Buttons */}
       <View style={invoiceCardStyles.sideButtons}>
-        <TouchableOpacity disabled={type === 'penjualan'} onPress={changeType} style={[invoiceCardStyles.statusButton, { backgroundColor: type ==='penjualan' ? '#6fffa4' : '#fff176' }]}>
+        <TouchableOpacity disabled={type === 'penjualan'} onPress={changeType} style={[invoiceCardStyles.statusButton, { backgroundColor: type ==='Penjualan' ? '#6fffa4' : '#fff176' }]}>
           <Ionicons name="checkmark-circle" size={24} color="#000" />
           <Text style={invoiceCardStyles.sideText}>Penjualan</Text>
         </TouchableOpacity>
-        <TouchableOpacity disabled={type === 'pembelian'} onPress={changeType} style={[invoiceCardStyles.statusButton, { backgroundColor: type === 'penjualan' ? '#fff176' : '#6fffa4' }]}>
+        <TouchableOpacity disabled={type === 'Pembelian'} onPress={changeType} style={[invoiceCardStyles.statusButton, { backgroundColor: type === 'Penjualan' ? '#fff176' : '#6fffa4' }]}>
           <MaterialIcons name="credit-card" size={24} color="#000" />
           <Text style={invoiceCardStyles.sideText}>Pembelian</Text>
         </TouchableOpacity>
