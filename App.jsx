@@ -14,6 +14,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useEffect, useState } from 'react';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { GlobalProvider, useGlobal } from './service/GlobalContext';
+import { Provider as PaperProvider } from 'react-native-paper';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -54,12 +56,14 @@ function ItemList({ data }) {
   );
 }
 
-function CustomTabBar({ currentTab, setCurrentTab, setIsAtTop }) {
+function CustomTabBar() {
   const translateY = useSharedValue(0);
   const startY = useSharedValue(0);
   const expandedY = -SCREEN_HEIGHT * 0.58;
   const collapsedY = 0;
   const halfExpandedY = expandedY / 10;
+  const { currentTab, setCurrentTab } = useGlobal();
+  const { setIsAtTop } = useGlobal();
 
   const routes = [
     { key: 'Home', title: 'Home', content: <Text style={{color: 'white'}}>Home Content</Text> },
@@ -177,11 +181,10 @@ function CustomTabBar({ currentTab, setCurrentTab, setIsAtTop }) {
 }
 
 export default function App() {
-  const [isAtTop, setIsAtTop] = useState(false);
-  const [currentTab, setCurrentTab] = useState("Home");
-
   return (
+    <GlobalProvider>
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <PaperProvider>
       <LinearGradient
         colors={['#0C324D', '#061b29', '#020202']}
         start={{ x: 0, y: 0 }}
@@ -189,11 +192,13 @@ export default function App() {
         style={{ flex: 1 }}
       >
         <SafeAreaView style={{ flex: 1 }}>
-          <HomeScreen isAtTop={isAtTop} />
-          <CustomTabBar currentTab={currentTab} setCurrentTab={setCurrentTab} setIsAtTop={setIsAtTop} />
+          <HomeScreen />
+          <CustomTabBar />
         </SafeAreaView>
       </LinearGradient>
+      </PaperProvider>
     </GestureHandlerRootView>
+    </GlobalProvider>
   );
 }
 

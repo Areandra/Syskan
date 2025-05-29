@@ -2,11 +2,13 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Ionicon from 'react-native-vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { useState } from 'react';
+import { useGlobal } from '../service/GlobalContext';
+import ModalForm from '../components/modal/NoteModal';
 
 export default function HomeScreens({ isAtTop}) {
-  const [type, setType] = useState('penjualan');
+  const [modalVisible, setModalVisible] = useState(false);
   return (
     <LinearGradient
       colors={['#0C324D', '#061b29', '#020202']}
@@ -14,29 +16,31 @@ export default function HomeScreens({ isAtTop}) {
       end={{ x: 1, y: 1 }}
       style={styles.container}
       >
-        <Header title="Home Screen"/>
-        <Debt curency="Rp" amount="1.400" isAtTop={isAtTop} type={type} />
-        <InvoiceCard isAtTop={isAtTop} setType={setType} type={type}/>
+        <ModalForm visible={modalVisible} onDismiss={() => setModalVisible(false)} />
+        <Header title="Home Screen" setVisible={setModalVisible}/>
+        <Debt curency="Rp" amount="1.400" />
+        <InvoiceCard isAtTop={isAtTop}/>
     </LinearGradient>
   );
 }
 
-const Header = ({ title }) => {
+const Header = ({ title, setVisible }) => {
   return (
       <View style ={header.container}>
         <View style={header.buttonContainer}>
-          <CircleButton onPress={() => alert('Settings Pressed')} iconName="arrow-back-outline" style={optionalStyle.backButton} />  
+          <CircleButton onPress={() => setVisible(true)} iconName="edit-3" style={optionalStyle.backButton} />  
           <Text style={header.text}>{title}</Text>
         </View>
         <View style={header.buttonContainer}>
-          <CircleButton onPress={() => alert('Search Pressed')} iconName="search-outline" style={optionalStyle.backButton} />
-          <CircleButton onPress={() => alert('Notifications Pressed')} iconName="notifications-outline" />
+          <CircleButton onPress={() => alert('Search Pressed')} iconName="user" style={optionalStyle.backButton} />
+          <CircleButton onPress={() => alert('Notifications Pressed')} iconName="bell" />
         </View>  
       </View>
   );
 };
 
-const Debt = ({ curency, amount, isAtTop, type}) => {
+const Debt = ({ curency, amount}) => {
+  const { isAtTop, type, currentTab } = useGlobal();
   const animatedStyle = useAnimatedStyle(() => {
     return {
       opacity: withTiming(isAtTop ? 0 : 1),  // fade out kalau isAtTop true
@@ -68,19 +72,19 @@ const Debt = ({ curency, amount, isAtTop, type}) => {
         <Text style = {DebtStyle.sideText}>.000</Text>
       </View>
       <Animated.View style={[DebtStyle.information, animatedStyle]}>
-        <CircleInformation title="Role" subTitle="Serkertaris" iconName="wallet-outline" size={24} color="#007bff" />
-        <CircleInformation title="Type" subTitle={type} iconName="cash-outline" size={24} color="#28a745" />
-        <CircleInformation title="Jangka" subTitle="Bulan" iconName="card-outline" size={24} color="#ffc107" />
+        <CircleInformation title="Role" subTitle="Serkertaris" iconName="award" size={24} />
+        <CircleInformation title="Type" subTitle={type} iconName="activity" size={24} />
+        <CircleInformation title="Anggota" subTitle={currentTab} iconName="user-check" size={24} />
       </Animated.View>
     </View>
   );
 }
 
-const CircleInformation = ({ title, subTitle, iconName, size, color, type }) => {
+const CircleInformation = ({ title, subTitle, iconName, size }) => {
   const CircleIcon = ({iconName}) => {
     return (
       <View style={{ borderRadius: '100%', backgroundColor: 'rgba(255, 255, 255, 0.05)', padding: 10, width: size + 20, }}>
-        <Ionicon name={iconName} size={size} color={'grey'} />
+        <Feather name={iconName} size={size} color='grey' />
       </View>
     );
   }
@@ -99,12 +103,13 @@ const CircleInformation = ({ title, subTitle, iconName, size, color, type }) => 
 const CircleButton = ({ onPress, iconName, style }) => {
   return (
     <TouchableOpacity style={[header.button, style]} onPress={onPress}>
-      <Ionicon name={iconName} size={18} color="#fff" />
+      <Feather name={iconName} size={18} color="#fff" />
     </TouchableOpacity>
   );
 };
 
-const InvoiceCard = ({isAtTop, setType, type}) => {
+const InvoiceCard = () => {
+  const { type, setType, isAtTop } = useGlobal();
   const changeType = () => {
     if (type === 'Penjualan') {
       setType('Pembelian');
