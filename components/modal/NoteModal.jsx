@@ -37,7 +37,7 @@ const ModalForm = ({ visible, onDismiss }) => {
   }, [visible]);
 
 const generateDraftKey = () => {
-  return `${pemasok}_${today}_${sopir}_ke-${masukKe}`;
+  return `Masuk ${pemasok} ${today} ${sopir} ke-${masukKe}`;
 };
 
 
@@ -116,23 +116,10 @@ const handleNextStep = () => {
 
   const handleSubmit = async () => {
     try {
-      if (mode === 'user') {
         await setDoc(doc(db, 'users', name), {
           name,
           role,
         });
-      } else {
-        // Simpan semua item draft ke database
-        for (const item of draftItems) {
-          const { userId, ...invoice } = item;
-          await addDoc(collection(db, 'users', userId, 'invoices'), {
-            ...invoice,
-            key: draftKey,
-          });
-        }
-        await removeDraft(draftKey);
-        setDraftItems([]);
-      }
       onDismiss();
     } catch (error) {
       console.error('Error submitting data:', error);

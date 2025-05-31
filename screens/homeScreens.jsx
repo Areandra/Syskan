@@ -1,14 +1,12 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import Ionicon from 'react-native-vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
-import { useState } from 'react';
 import { useGlobal } from '../service/GlobalContext';
-import ModalForm from '../components/modal/NoteModal';
+import CustomTabBar from '../components/CostumTabBar';
+import Header from '../components/Header';
 
-export default function HomeScreens({ isAtTop}) {
-  const [modalVisible, setModalVisible] = useState(false);
+export default function HomeScreens({ isAtTop, navigation }) {
   return (
     <LinearGradient
       colors={['#0C324D', '#061b29', '#020202']}
@@ -16,28 +14,13 @@ export default function HomeScreens({ isAtTop}) {
       end={{ x: 1, y: 1 }}
       style={styles.container}
       >
-        <ModalForm visible={modalVisible} onDismiss={() => setModalVisible(false)} />
-        <Header title="Home Screen" setVisible={setModalVisible}/>
+        <Header title="Home Screen" navigation={navigation}/>
         <Debt curency="Rp" amount="1.400" />
         <InvoiceCard isAtTop={isAtTop}/>
+        <CustomTabBar />
     </LinearGradient>
   );
 }
-
-const Header = ({ title, setVisible }) => {
-  return (
-      <View style ={header.container}>
-        <View style={header.buttonContainer}>
-          <CircleButton onPress={() => setVisible(true)} iconName="edit-3" style={optionalStyle.backButton} />  
-          <Text style={header.text}>{title}</Text>
-        </View>
-        <View style={header.buttonContainer}>
-          <CircleButton onPress={() => alert('Search Pressed')} iconName="user" style={optionalStyle.backButton} />
-          <CircleButton onPress={() => alert('Notifications Pressed')} iconName="bell" />
-        </View>  
-      </View>
-  );
-};
 
 const Debt = ({ curency, amount}) => {
   const { isAtTop, type, currentTab } = useGlobal();
@@ -98,15 +81,6 @@ const CircleInformation = ({ title, subTitle, iconName, size }) => {
     </View>
   );
 }
-
-
-const CircleButton = ({ onPress, iconName, style }) => {
-  return (
-    <TouchableOpacity style={[header.button, style]} onPress={onPress}>
-      <Feather name={iconName} size={18} color="#fff" />
-    </TouchableOpacity>
-  );
-};
 
 const InvoiceCard = () => {
   const { type, setType, isAtTop } = useGlobal();
@@ -238,12 +212,6 @@ const invoiceCardStyles = StyleSheet.create({
   },
 });
 
-const optionalStyle = {
-  backButton: {
-    marginRight: 10,
-  },
-};
-
 const DebtStyle = StyleSheet.create({
   container: {
     alignItems: 'center',
@@ -276,33 +244,6 @@ const DebtStyle = StyleSheet.create({
     paddingHorizontal: 40,
     borderRadius: 10,
     margin: 0,
-  },
-});
-
-const header = StyleSheet.create({
-  container: {
-    width: '100%',
-    height: 60,
-    marginTop: 15,
-    paddingHorizontal: 20,
-    backgroundColor: '',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  text: {
-    fontSize: 20,
-    fontWeight: 'regular',
-    color: '#fff',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  button: {
-    padding: 18,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)', // transparan putih
   },
 });
 
