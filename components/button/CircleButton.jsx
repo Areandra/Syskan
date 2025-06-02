@@ -16,5 +16,6 @@ const header = StyleSheet.create({
     padding: 18,
     borderRadius: 100,
     backgroundColor: 'rgba(255, 255, 255, 0.05)', // transparan putih
+    height: 54,
   },
 });

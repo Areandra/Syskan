@@ -5,135 +5,150 @@ import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { useGlobal } from '../service/GlobalContext';
 import CustomTabBar from '../components/CostumTabBar';
 import Header from '../components/Header';
-import TruckLoader from '../components/Loaders'
+import TruckLoader from '../components/loader/Loaders'
 import { collection, query, where, getDocs, getDoc, collectionGroup } from 'firebase/firestore';
 import { db } from '../service/firebase/firebaseConfig';
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react';
+import Loader from '../components/loader/BallBounching';
 
-export default function HomeScreens({ isAtTop, navigation }) {
+export default function HomeScreens({ navigation }) {
   const [routes, setRoutes] = useState([]);
-  const {loading, setLoading, type, setCurrentTab } = useGlobal();
+  const {loading, setLoading, type, setCurrentTab, setIsAtTop, currentTab, update } = useGlobal();
   const [invoiceData, setInvoiceData] = useState({});
-  const [pengambilanUser, setPengambilanUser] = useState({})
+  const [first, setFirst] = useState(true);
+  const [pengambilanUser, setPengambilanUser] = useState({});
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setIsAtTop(false);
+      setLoading(true);
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   const fetchLanggananUsers = async ({ role }) => {
-  const q = query(collection(db, 'users'), where('role', '==', role));
-  const querySnapshot = await getDocs(q);
-  
-  const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  return data;
-};
+    const q = query(collection(db, 'users'), where('role', '==', role));
+    const querySnapshot = await getDocs(q);
+    const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return data;
+  };
 
-const fetchAllUserInvoices = async (useRootInvoices = false) => {
-  const querySnapshot = useRootInvoices
-    ? await getDocs(collection(db, 'invoice')) // 🔁 Koleksi root
-    : await getDocs(collectionGroup(db, 'invoices')); // 📦 Semua nested invoices
 
-  const data = await Promise.all(
-    querySnapshot.docs.map(async (docSnap) => {
-      try {
-        const parentUserRef = docSnap.ref.parent?.parent;
-        const isNested = !useRootInvoices;
-
-        let parentUserSnap = null;
-        if (isNested && parentUserRef) {
-          parentUserSnap = await getDoc(parentUserRef);
+  const fetchAllUserInvoices = async (useRootInvoices = false) => {
+    const querySnapshot = useRootInvoices
+      ? await getDocs(collection(db, 'invoice')) 
+      : await getDocs(collectionGroup(db, 'invoices')); 
+    const data = await Promise.all(
+      querySnapshot.docs.map(async (docSnap) => {
+        try {
+          const parentUserRef = docSnap.ref.parent?.parent;
+          const isNested = !useRootInvoices;
+          let parentUserSnap = null;
+          if (isNested && parentUserRef) {
+            parentUserSnap = await getDoc(parentUserRef);
+          }
+          const userData = parentUserSnap?.exists() ? parentUserSnap.data() : null;
+          const invoiceData = docSnap.data();
+          return {
+            id: docSnap.id,
+            parentUserId: isNested ? parentUserRef?.id || 'Unknown' : 'Langsung',
+            userName: useRootInvoices ? invoiceData?.header?.pemasok || 'Tanpa Nama' : userData?.name || 'Tanpa Nama',
+            ...invoiceData,
+          };
+        } catch (err) {
+          console.error('Fetch error:', err.message);
+          return null;
         }
-
-        const userData = parentUserSnap?.exists() ? parentUserSnap.data() : null;
-        
-        const invoiceData = docSnap.data();
-
-return {
-  id: docSnap.id,
-  parentUserId: isNested ? parentUserRef?.id || 'Unknown' : 'Langsung',
-  userName: useRootInvoices ? invoiceData?.header?.pemasok || 'Tanpa Nama' : userData?.name || 'Tanpa Nama',
-  ...invoiceData,
-};
-        
-      } catch (err) {
-        console.error('Fetch error:', err.message);
-        return null;
+      })
+    );
+    const filteredData = data.filter((d) => d !== null);
+    const tabData = {};
+    filteredData.forEach((invoice) => {
+      const id = invoice.parentUserId;
+      if (!tabData[id]) {
+        tabData[id] = [];
       }
-    })
-  );
+      tabData[id].push(invoice);
+    });
+    return tabData;
+  };
 
-  // Filter null data
-  const filteredData = data.filter((d) => d !== null);
-
-  // Kelompokkan berdasarkan parentUserId
-  const tabData = {};
-  filteredData.forEach((invoice) => {
-    const id = invoice.parentUserId;
-    if (!tabData[id]) {
-      tabData[id] = [];
-    }
-    tabData[id].push(invoice);
-  });
-
-  return tabData;
-};
-
-const hitungTotalHargaPerUserDariData = (groupedInvoiceData) => {
-  const hasilAkhir = {};
-
-  Object.entries(groupedInvoiceData).forEach(([userId, invoiceList]) => {
-    let totalUser = 0;
-    console.log(`\n🔍 Menghitung untuk userId: ${userId}`);
-
-    invoiceList.forEach((invoice, i) => {
-      console.log(`  Invoice ke-${i + 1}:`, invoice);
-      invoice.items?.forEach((item, j) => {
-        const jumlah = parseFloat(item.jumlah);
-        const harga = parseFloat(item.harga);
-        const subtotal = jumlah * harga;
-
-        console.log(`    ➤ item-${j + 1}: jumlah=${jumlah}, harga=${harga}, subtotal=${subtotal}`);
-
-        if (!isNaN(jumlah) && !isNaN(harga)) {
-          totalUser += subtotal;
+  const hitungTotalHargaPerUserDariData = (groupedInvoiceData) => {
+    const hasilAkhir = {};
+    Object.entries(groupedInvoiceData).forEach(([userId, invoiceList]) => {
+      let totalUser = 0;
+      console.log(`\n🔍 Menghitung untuk userId: ${userId}`);
+      invoiceList.forEach((invoice, i) => {
+        console.log(`  Invoice ke-${i + 1}:`, invoice);
+        const item = invoice.item;
+        if (item) {
+          const jumlah = parseFloat(item.jumlah);
+          const harga = parseFloat(item.harga);
+          const subtotal = jumlah * harga;
+          console.log(`    ➤ item: jumlah=${jumlah}, harga=${harga}, subtotal=${subtotal}`);
+          if (!isNaN(jumlah) && !isNaN(harga)) {
+            totalUser += subtotal;
+          }
         }
       });
+      console.log(`  ✅ Total untuk ${userId}: ${totalUser}`);
+      hasilAkhir[userId] = totalUser;
     });
-
-    console.log(`  ✅ Total untuk ${userId}: ${totalUser}`);
-    hasilAkhir[userId] = totalUser;
-  });
-
-  return hasilAkhir;
-};
+    return hasilAkhir;
+  };
 
   useEffect(() => {
     if (!loading) return;
-  const fetchData = async () => {
-    try {
-      const users = await fetchLanggananUsers({ role: type === 'Penjualan' ? 'Langganan' : 'Pemasok' });
-      const defaultRoutes = {
-        key: 'Beranda',
-        title: 'Beranda',
-      };
-      const newRoutes = users.map(user => ({
-        key: user.id, // Gunakan ID user
-        title: user.name, // Tampilkan nama sebagai judul
-      }));
-      setRoutes([defaultRoutes, ...newRoutes]);
+    const fetchData = async () => {
+      try {
+        const users = await fetchLanggananUsers({ role: type === 'Penjualan' ? 'Langganan' : 'Pemasok' });
+        console.log(JSON.stringify(users, null, 2));
+        const defaultRoutes = {
+          key: 'Beranda',
+          title: 'Beranda',
+        };
+        const newRoutes = users.map(user => ({
+          key: user.id,
+          title: user.name,
+        }));
+        setRoutes([defaultRoutes, ...newRoutes]);
+        const invoiceDataByUser = await fetchAllUserInvoices( type === 'Penjualan' ? false : true );
+        setInvoiceData(invoiceDataByUser); 
+        const pengambilan = hitungTotalHargaPerUserDariData(invoiceDataByUser);
+        const totalSemuaUser = Object.values(pengambilan).reduce((acc, val) => acc + val, 0);
+        const allPengambilan = { Beranda: totalSemuaUser,...pengambilan };
+        setPengambilanUser(allPengambilan);
+        console.log('Ini', allPengambilan);
+      } catch (error) {
+        console.error('Fetch error:', error.message, error.stack);
+      } finally {
+        setCurrentTab('Beranda')
+        setFirst(false);
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [loading]);
 
-      const invoiceDataByUser = await fetchAllUserInvoices( type === 'Penjualan' ? false : true );
-      setInvoiceData(invoiceDataByUser); // tabData = invoiceDataByUser
-      
-      const pengambilan = await hitungTotalHargaPerUserDariData(invoiceDataByUser);
-      setPengambilanUser(pengambilan);
-      console.log('Ini', pengambilan);
-      console.log(JSON.stringify(invoiceDataByUser, null, 2));
-    } catch (error) {
-      console.error('Fetch error:', error.message, error.stack);
-    } finally {
-      setCurrentTab('Beranda')
-      setLoading(false);
+  useEffect(() => {
+    if (first) {
+      return;
     }
-  };
-
-  fetchData();
-}, [loading]);
+    const fetchData = async () => {
+      try {
+        const invoiceDataByUser = await fetchAllUserInvoices( type === 'Penjualan' ? false : true );
+        setInvoiceData(invoiceDataByUser); 
+        const pengambilan = hitungTotalHargaPerUserDariData(invoiceDataByUser);
+        const totalSemuaUser = Object.values(pengambilan).reduce((acc, val) => acc + val, 0);
+        const allPengambilan = { Beranda: totalSemuaUser,...pengambilan };
+        setPengambilanUser(allPengambilan);
+        console.log('Ini', allPengambilan);
+      } catch (error) {
+        console.error('Fetch error:', error.message, error.stack);
+      }
+    };
+    fetchData();
+  }, [update]);
 
   if (loading) {
     return (
@@ -154,9 +169,24 @@ const hitungTotalHargaPerUserDariData = (groupedInvoiceData) => {
       end={{ x: 1, y: 1 }}
       style={styles.container}
       >
-        <Header title="Home Screen" navigation={navigation}/>
-        <Debt curency="Rp" amount="1.400" />
-        <InvoiceCard isAtTop={isAtTop}/>
+        <Header 
+          title="Beranda" 
+          navigation={navigation}
+          buttonOne={{
+            navigate: 'DraftInvoiceScreen',
+            icon: 'edit-3'  // opsional
+          }}
+          buttonTwo={{
+            icon: 'user',
+            navigate: 'DraftInvoiceScreen'
+          }}
+          buttonThree={{
+            icon: 'bell',
+            navigate: 'DraftInvoiceScreen'
+          }}
+        />
+        <Debt curency="Rp" amount={pengambilanUser[currentTab]} />
+        <InvoiceCard />
         <CustomTabBar routes={routes} loading={loading} tabData={invoiceData} />
     </LinearGradient>
   );
@@ -176,27 +206,37 @@ const Debt = ({ curency, amount}) => {
   }, [isAtTop]);
 
   const formatNumber = () => {
-    const raw = amount.toString().replace(/\D/g, '');
-    const numeric = parseInt(raw || '0', 10); 
-    const padded = ('000000' + numeric).slice(-6); // 6 digit manual
-    const part1 = padded.slice(0, 3); // "001"
-    const part2 = padded.slice(3);    // "400"
+  if (amount == null) return { part1: '000', part2: '000' };
 
-    return { part1, part2 };
-  }
+  const raw = amount.toString().replace(/\D/g, '');
+  const numeric = parseInt(raw || '0', 10); 
+  const padded = ('000000' + numeric).slice(-6); // 6 digit manual
+  const part1 = padded.slice(0, 3);
+  const part2 = padded.slice(3);
+
+  return { part1, part2 };
+};
+
   const { part1, part2 } = formatNumber();
-
-  return (
-    <View style={DebtStyle.container}>
-      <View style = {DebtStyle.amount}>
-        <Text style = {[DebtStyle.sideText, {color:'white'}]}>{curency}</Text>
-        <Text style = {DebtStyle.centerText}>{part1}</Text>
-        <Text style = {[DebtStyle.centerText, {color: 'grey'}]}>.{part2}</Text>
-        <Text style = {DebtStyle.sideText}>.000</Text>
+  
+    return (
+    <View style={DebtStyle.container}> 
+      <View style={[DebtStyle.amount, {marginBottom: !amount ? -1.9 : 0}]}>
+        {!amount ? (
+          <Loader />
+        ) : (
+          <Text>
+            <Text style={[DebtStyle.sideText, {color:'white'}]}>{curency}</Text>
+            <Text style={DebtStyle.centerText}>{part1}</Text>
+            <Text style={[DebtStyle.centerText, {color: 'grey'}]}>.{part2}</Text>
+            <Text style={DebtStyle.sideText}>.000</Text>
+          </Text>
+        )}
       </View>
+
       <Animated.View style={[DebtStyle.information, animatedStyle]}>
-        <CircleInformation title="Role" subTitle="Serkertaris" iconName="award" size={24} />
-        <CircleInformation title="Type" subTitle={type} iconName="activity" size={24} />
+        <CircleInformation title="Pengguna" subTitle="Serkertaris" iconName="award" size={24} />
+        <CircleInformation title="Tipe" subTitle={type} iconName="activity" size={24} />
         <CircleInformation title="Anggota" subTitle={currentTab} iconName="user-check" size={24} />
       </Animated.View>
     </View>
@@ -223,7 +263,7 @@ const CircleInformation = ({ title, subTitle, iconName, size }) => {
 }
 
 const InvoiceCard = () => {
-  const { type, setType, isAtTop, loading, setLoading } = useGlobal();
+  const { type, setType, isAtTop, setLoading } = useGlobal();
   const changeType = () => {
     if (type === 'Penjualan') {
       setType('Pembelian');
@@ -387,7 +427,7 @@ const DebtStyle = StyleSheet.create({
   },
 });
 
-const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent',

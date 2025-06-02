@@ -55,17 +55,33 @@ const handleDeleteAllDraft = async () => {
 };
 
   return (
-    <>
     <LinearGradient
-            colors={['#0C324D', '#061b29', '#020202']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ flex: 1 }}
-          >
-    <Header title="Draft Invoice" navigate={'HomeScreen'} navigation={navigation} back={true} pemasok={true} langganan={true} />
-    <View style={styles.container} >
-      <View style={{flex:1}}>
-      {(!visible && !visibleCar && !visibleHeader) && (
+      colors={['#0C324D', '#061b29', '#020202']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{ flex: 1 }}
+    >
+      <Header 
+        title="Draft Invoice" 
+        navigation={navigation}
+        buttonOne={{
+          back: true,
+          icon: 'arrow-left'
+        }}
+        buttonTwo={{
+          modal: true,
+          icon: 'user-plus',
+          onPress: () => setVisible(true)
+        }}
+        buttonThree={{
+          modal: true,
+          icon: 'truck',
+          onPress: () => setVisibleCar(true)
+        }}
+      />
+      <View style={styles.container} >
+        <View style={{flex:1}}>
+        
       <Animated.View style={animatedStyle}>
       <DraftInvoiceList
         drafts={drafts}
@@ -73,9 +89,7 @@ const handleDeleteAllDraft = async () => {
         onDelete={handleDelete}
       />
       </Animated.View>
-    )}
       </View>
-      {(!visible && !visibleCar && !visibleHeader) && (
       <Animated.View style={animatedStyle}>
       <TouchableOpacity style={[styles.payButton, {marginTop: 20,}]} onPress={() => [navigation.navigate('NewInvoiceScreen'), setVisibleHeader(true)]}>
           <Text style={styles.payButtonText}>Tambah Draft Baru</Text>
@@ -84,10 +98,8 @@ const handleDeleteAllDraft = async () => {
           <Text style={styles.payButtonText}>Save All Draft</Text>
       </TouchableOpacity>
     </Animated.View>
-    )}
     </View>
     </LinearGradient>
-    </>
   );
 };
 

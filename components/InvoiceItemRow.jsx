@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Modal, Pressable } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { db } from '../service/firebase/firebaseConfig';
@@ -8,20 +8,25 @@ import { useGlobal } from '../service/GlobalContext';
 
 const kualitasColors = {
   Bagus: 'rgba(255, 255, 255, 0.05)',
-  Sedang: '#fff5cc',
-  Jelek: '#ffd6d6',
+  Bermalam: 'rgba(255, 222, 56, 0.3)',
+  Barnes: '#ffd6d6',
 };
 
 const InvoiceItemRow = ({ item, index, onUpdate, onDelete, listHarga }) => {
   const [langgananList, setLanggananList] = useState([]);
   const [langgananOpen, setLanggananOpen] = useState(false);
   const [ikanOpen, setIkanOpen] = useState(false);
-  const {visibleKualitas, setVisibleKualitas} = useGlobal();
+  const [visibleKualitas, setVisibleKualitas] = useState(false);
   const [open, setOpen] = useState(false);
+  const {setVisibleKualitasGlobal} = useGlobal();
 
   useEffect(() => {
     fetchLangganan();
   }, []);
+
+  useEffect(() => {
+    setVisibleKualitasGlobal(visibleKualitas);
+  }, [visibleKualitas]);
   
   useEffect(() => {
     if (ikanOpen || langgananOpen) setOpen(true);
@@ -112,11 +117,16 @@ const InvoiceItemRow = ({ item, index, onUpdate, onDelete, listHarga }) => {
         </View>
       </View>
 
-      <Modal visible={visibleKualitas} transparent animationType="slide">
+      <Modal 
+        visible={visibleKualitas} 
+        transparent 
+        animationType="slide"
+        onRequestClose={() => setVisibleKualitas(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>Pilih Kualitas Ikan</Text>
-            {['Bagus', 'Sedang', 'Jelek'].map(k => (
+            {['Bagus', 'Bermalam', 'Barnes', 'Spesial 1', 'Spesial 2', 'Spesial 3'].map(k => (
               <Pressable key={k} onPress={() => {
                 handleChange('kualitas', k);
                 setVisibleKualitas(false);
@@ -124,9 +134,6 @@ const InvoiceItemRow = ({ item, index, onUpdate, onDelete, listHarga }) => {
                 <Text>{k}</Text>
               </Pressable>
             ))}
-            <Pressable onPress={() => setVisibleKualitas(false)} style={[styles.modalOption, { backgroundColor: '#eee' }]}>
-              <Text style={{ color: 'red' }}>Batal</Text>
-            </Pressable>
           </View>
         </View>
       </Modal>
@@ -182,25 +189,29 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    paddingHorizontal: 40,
   },
   modal: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
+    width: '85%',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    padding: 20,
+    borderRadius: 16,
+    alignSelf: 'center',
+    backdropFilter: 'blur(10px)',
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: 'white',
+    fontSize: 18,
     marginBottom: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   modalOption: {
-    paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 6,
-    backgroundColor: '#f9f9f9',
+    marginVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(225, 225, 225, 0.08)',
+    borderRadius: 12,
   },
   textPicker: {
     color: 'white',

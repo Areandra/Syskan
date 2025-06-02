@@ -1,48 +1,286 @@
-import React from 'react';
-import { StyleSheet, View, TouchableOpacity, Text, ScrollView, Dimensions, FlatList } from 'react-native';
-import Animated, {
-  useSharedValue,
-  withTiming,
-  useAnimatedStyle,
-  interpolate,
-  Extrapolate,
-  runOnJS,
-} from 'react-native-reanimated';
+import { useRef, useState } from 'react';
+import { StyleSheet, View, TouchableOpacity, Text, ScrollView, Dimensions, FlatList, Alert } from 'react-native';
+import Animated, { useSharedValue, withTiming, useAnimatedStyle, interpolate, Extrapolate, runOnJS, } from 'react-native-reanimated';
 import { useEffect } from 'react';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { useGlobal } from '../service/GlobalContext';
+import { db } from '../service/firebase/firebaseConfig';
+import { deleteDoc, doc } from 'firebase/firestore';
+import CircleButton from './button/CircleButton';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 function ItemList({ data }) {
-  const renderItem = ({ item }) => (
-    <View style={styles.itemContainer}>
-      <Text style={styles.quantity}>{item.header.pemasok}</Text>
-      <Text style={styles.name}>{item.item.ikan}</Text>
-      <Text style={styles.price}>Rp.{item.item.harga}000,00</Text>
-      <View style={styles.locationContainer}>
-        <Text style={styles.location}>{item.item.jumlah} Gabus</Text>
-        <Text style={styles.store}>{item.header.tanggal}</Text>
-      </View>
-    </View>
-  );
+  const { currentTab, setUpdate } = useGlobal();
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const toggleSelectItem = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const deleteSelectedItems = async () => {
+    if (selectedIds.length === 0) {
+      Alert.alert("Tidak ada item yang dipilih");
+      return;
+    }
+
+    Alert.alert(
+      "Konfirmasi",
+      `Hapus ${selectedIds.length} item terpilih?`,
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Hapus",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const deletePromises = selectedIds.map(id => {
+                const docRef = doc(db, "users", currentTab, "invoices", id);
+                return deleteDoc(docRef);
+              });
+
+              await Promise.all(deletePromises);
+              setSelectedIds([]);
+              setUpdate(prev => !prev);
+              console.log("✅ Item berhasil dihapus");
+            } catch (error) {
+              console.error("❌ Gagal menghapus:", error);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderItem = ({ item }) => {
+    const isSelected = selectedIds.includes(item.id);
+    return (
+      <TouchableOpacity
+        onPress={() => toggleSelectItem(item.id)}
+        style={[
+          card.itemContainer,
+          isSelected && { backgroundColor: '#f5a8c650', borderWidth: 1, borderColor: '#f5a8c6' },
+        ]}
+      >
+        <Text style={card.sopir}>{item.header.pemasok} {item.header.sopir}</Text>
+        <Text style={card.name}>
+          {item.item.ikan} {item.item.kualitas === 'Bagus' ? '' : item.item.kualitas}
+        </Text>
+        <Text style={card.price}>Rp.{item.item.harga}.000,00</Text>
+        <View style={card.locationContainer}>
+          <Text style={[card.location, {color: 'white'}]}>{item.item.jumlah} <Text style={card.location}>Gabus</Text></Text>
+          <Text style={card.store}>{item.header.hari}, <Text style={{color: 'grey'}}>{item.header.tanggal},</Text> {item.header.jam}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const totalGabus = (data) => data.reduce((sum, item) => sum + item.item.jumlah, 0);
 
   return (
-    <FlatList
-      data={data}
-      renderItem={renderItem}
-      keyExtractor={item => item.id}
-      contentContainerStyle={styles.listContainer}
-      style={{ flex: 1 }} // added flex:1 for full height and scroll
-      keyboardShouldPersistTaps="handled"
-    />
+    <View style={card.container}>
+      {data && (
+        <View style={{ width: '100%' }}>
+          <Text style={card.title}>{data[0].userName}</Text>
+          <View style={card.rowContainer}>
+            <Text style={card.title}>{totalGabus(data)} <Text style={{color: 'grey', fontSize: 18,}}>Items</Text></Text>
+            <View style={card.buttonContainer}>
+              <CircleButton
+                onPress={deleteSelectedItems}
+                iconName="trash-2"
+                style={{ marginRight: 10 }}
+              />
+              <CircleButton
+                onPress={() => setVisiblePlus(true)}
+                iconName="plus"
+              />
+            </View>
+          </View>
+        </View>
+      )}
+      <FlatList
+        data={data}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={card.listContainer}
+        style={{ flex: 1 }}
+        keyboardShouldPersistTaps="handled"
+      />
+    </View>
   );
 }
+
+const card = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    paddingBottom: 50,
+  },
+  rowContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+  },
+  listContainer: {
+    paddingBottom: 0,
+    flexGrow: 1,
+  },
+  itemContainer: {
+    marginBottom: 2,
+    padding: 20,
+    backgroundColor: 'rgba(80, 80, 80, 0.3)',
+    borderRadius: 30,
+  },
+  sopir: {
+    fontSize: 14,
+    color: 'white',
+  },
+  name: {
+    color: 'white',
+    fontSize: 18,
+    marginBottom: 10,
+    fontWeight: 'bold',
+  },
+  title: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 500,
+    marginVertical: 20,
+  },
+  price: {
+    fontSize: 16,
+    color: '#007AFF',
+    marginBottom: 4,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  location: {
+    fontSize: 14,
+    color: '#888',
+  },
+  store: {
+    fontSize: 14,
+    color: 'white',
+  },
+});
+
+const dataContoh = [
+  {
+    key: 'Masuk SGT Udin Senin 2025-06-02 18:00',
+    hari: 'Senin',
+    jam: '18:00',
+    pemasok: 'SGT',
+    sopir: 'Udin',
+    tanggal: '2025-06-02',
+    items: [
+      {
+        langganan: 'Dayat',
+        ikan: 'Tuna',
+        jumlah: 1,
+        harga: '2000',
+        kualitas: 'Bagus',
+      },
+      {
+        langganan: 'Dayat',
+        ikan: 'Kerapu',
+        jumlah: 1,
+        harga: '1500',
+        kualitas: 'Bagus',
+      },
+      {
+        langganan: 'Dayat',
+        ikan: 'Kerapu',
+        jumlah: 1,
+        harga: '1500',
+        kualitas: 'Bagus',
+      },
+    ],
+  },
+  // Bisa ditambahkan dokumen lain
+];
+
+function InvoiceList() {
+  return (
+    <ScrollView contentContainerStyle={styles1.container}>
+      {dataContoh.map((doc, docIndex) => (
+        <View key={doc.key} style={styles.docContainer}>
+          {/* Header */}
+          <View style={styles1.headerRow}>
+            <Text style={styles1.headerText}>Pemasok: {doc.pemasok}</Text>
+            <Text style={styles1.headerText}>Sopir: {doc.sopir}</Text>
+            <Text style={styles1.headerText}>{doc.hari}, {doc.tanggal}</Text>
+            <Text style={styles1.headerText}>Jam: {doc.jam}</Text>
+          </View>
+
+          {/* Items */}
+          <View style={styles1.itemList}>
+            {doc.items.map((item, index) => (
+              <View key={index} style={styles1.itemRow}>
+                <Text style={styles1.cell}>{item.langganan}</Text>
+                <Text style={styles1.cell}>{item.ikan}</Text>
+                <Text style={styles1.cell}>Qty: {item.jumlah}</Text>
+                <Text style={styles1.cell}>Rp {item.harga}</Text>
+                <Text style={styles1.cell}>{item.kualitas}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+const styles1 = StyleSheet.create({
+  container: {
+    padding: 12,
+    flex: 1,
+  },
+  docContainer: {
+    marginBottom: 20,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    elevation: 3,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 8,
+    gap: 8,
+  },
+  headerText: {
+    fontWeight: 'bold',
+    marginRight: 12,
+  },
+  itemList: {
+    flexDirection: 'column',
+    gap: 6,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    padding: 6,
+    gap: 10,
+  },
+  cell: {
+    fontSize: 14,
+    minWidth: 60,
+  },
+});
+
 
 export default function CustomTabBar({ routes, loading, tabData }) {
   const translateY = useSharedValue(0);
   const startY = useSharedValue(0);
-  const expandedY = -SCREEN_HEIGHT * 0.58 + 36;
+  const expandedY = -SCREEN_HEIGHT * 0.59 + 36;
   const collapsedY = 0;
   const halfExpandedY = expandedY / 10;
   const { currentTab, setCurrentTab } = useGlobal();
@@ -80,7 +318,7 @@ export default function CustomTabBar({ routes, loading, tabData }) {
     transform: [{ translateY: translateY.value }],
   }));
 
-  const progressValues = React.useRef(
+  const progressValues = useRef(
     routes.reduce((acc, route) => {
       acc[route.key] = useSharedValue(currentTab === route.key ? 1 : 0);
       return acc;
@@ -105,7 +343,7 @@ export default function CustomTabBar({ routes, loading, tabData }) {
       </GestureDetector>
 
       <Animated.View style={[styles.tabBarContainer, containerAnimatedStyle]}>
-        <View style={{width: '87%', left: '6.5%'}}>
+        <View style={{width: '88%', left: 8, zIndex:10}}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
             <View style={styles.tabBar}>
               {routes?.map((route) => {
@@ -114,7 +352,7 @@ export default function CustomTabBar({ routes, loading, tabData }) {
 
                 const animatedIconStyle = useAnimatedStyle(() => ({
                   transform: [
-                    { translateY: interpolate(progress.value, [0, 1], [4.5,24.5], Extrapolate.CLAMP) },
+                    { translateY: interpolate(progress.value, [0, 1], [4.5,29], Extrapolate.CLAMP) },
                     { scale: interpolate(progress.value, [0, 1], [1, 1.3], Extrapolate.CLAMP) },
                   ],
                 }));
@@ -145,9 +383,10 @@ export default function CustomTabBar({ routes, loading, tabData }) {
           </ScrollView>
         </View>
         <View style={styles.bar}>
-          <View style={styles.contentContainer}>
-            <ItemList data={tabData[currentTab]} />
-          </View>
+          { currentTab === 'Beranda' 
+            ? ( <InvoiceList /> )
+            : ( <ItemList data={tabData[currentTab]} /> )
+          }
         </View>
       </Animated.View>
     </>
@@ -157,7 +396,7 @@ export default function CustomTabBar({ routes, loading, tabData }) {
 const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
-    bottom: -SCREEN_HEIGHT * 0.58,
+    bottom: -SCREEN_HEIGHT * 0.59,
     left: 0,
     right: 0,
     shadowOffset: { width: 0, height: 10 },
@@ -190,7 +429,7 @@ const styles = StyleSheet.create({
     width: 90,
     height: 40,
     borderTopLeftRadius: 20,
-    borderTopRightRadius: '70%',
+    borderTopRightRadius: '55%',
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     opacity: 0,
     zIndex: -1,
@@ -201,8 +440,8 @@ const styles = StyleSheet.create({
     left: '2.5%',
     right: 0,
     width: '95%',
-    borderTopLeftRadius: '5%',
-    borderTopRightRadius: '5%',
+    borderTopLeftRadius: '0%',
+    borderTopRightRadius: 30,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     flexGrow: 1,
   },  
@@ -214,46 +453,6 @@ const styles = StyleSheet.create({
     height: 50, // sama dengan tinggi tab bar
     backgroundColor: 'transparent',
     zIndex: 20,
-  },
-  contentContainer: {
-    flex: 1,
-    padding: 16,
-  },
-  listContainer: {
-    paddingBottom: 0,
-    flexGrow: 1,
-  },
-  itemContainer: {
-    marginBottom: 16,
-    padding: 12,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-  },
-  quantity: {
-    fontSize: 14,
-    color: '#666',
-  },
-  name: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginVertical: 4,
-  },
-  price: {
-    fontSize: 16,
-    color: '#007AFF',
-    marginBottom: 4,
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  location: {
-    fontSize: 14,
-    color: '#888',
-  },
-  store: {
-    fontSize: 14,
-    color: '#888',
   },
 });
 

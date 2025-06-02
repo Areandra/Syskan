@@ -16,7 +16,7 @@ const NewSopir = ({ visible, onDismiss }) => {
 
   useEffect(() => {
     fetchPemasok();
-  }, []);
+  }, [visible]);
 
   const fetchPemasok = async () => {
     const q = query(collection(db, 'users'), where('role', '==', 'Pemasok'));

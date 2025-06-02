@@ -9,11 +9,15 @@ export const GlobalProvider = ({children}) => {
   const [visible, setVisible] = useState(false);
   const [visibleCar, setVisibleCar] = useState(false);
   const [visibleHeader, setVisibleHeader] = useState(false);
-  const [visibleKualitas, setVisibleKualitas] = useState(false);
+  const [visibleKualitasGlobal, setVisibleKualitasGlobal] = useState();
   const [visibleHarga, setVisibleHarga] = useState(false);
   const [peringatan, setPeringatan] = useState(false);
   const [pesan, setPesan] = useState('');
   const [loading, setLoading] = useState(true);
+  const [update, setUpdate] = useState(true);
+  const [listHarga, setListHarga] = useState({});
+  const [hargaMap, setHargaMap] = useState({});
+  
   return (
     <GlobalContext.Provider
       value = {{
@@ -31,14 +35,20 @@ export const GlobalProvider = ({children}) => {
         setVisibleHeader,
         visibleHarga,
         setVisibleHarga,
-        visibleKualitas,
-        setVisibleKualitas,
+        visibleKualitasGlobal,
+        setVisibleKualitasGlobal,
         peringatan,
         setPeringatan,
         pesan,
         setPesan,
         loading,
         setLoading,
+        listHarga,
+        setListHarga,
+        hargaMap, 
+        setHargaMap,
+        update,
+        setUpdate,
       }}
     >
       {children}
