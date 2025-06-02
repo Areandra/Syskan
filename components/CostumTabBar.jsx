@@ -14,29 +14,15 @@ import { useGlobal } from '../service/GlobalContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const tabData = {
-  Home: [
-    { id: '1', name: 'iPhone 14 Pro', price: '$700', quantity: '67 items', location: '20 City', store: 'Store 2' },
-    { id: '2', name: 'iPhone 14', price: '$700', quantity: '20 items', location: '20 City', store: 'Store 2' },
-    // Tambahkan data lainnya
-  ],
-  Settings1: [
-    { id: '1', name: 'MacBook Pro', price: '$1200', quantity: '15 items', location: '30 City', store: 'Store 1' },
-    // Data untuk tab Settings1
-  ],
-  // Data untuk tab lainnya
-};
-
-
 function ItemList({ data }) {
   const renderItem = ({ item }) => (
     <View style={styles.itemContainer}>
-      <Text style={styles.quantity}>{item.quantity}</Text>
-      <Text style={styles.name}>{item.name}</Text>
-      <Text style={styles.price}>{item.price}</Text>
+      <Text style={styles.quantity}>{item.header.pemasok}</Text>
+      <Text style={styles.name}>{item.item.ikan}</Text>
+      <Text style={styles.price}>Rp.{item.item.harga}000,00</Text>
       <View style={styles.locationContainer}>
-        <Text style={styles.location}>{item.location}</Text>
-        <Text style={styles.store}>{item.store}</Text>
+        <Text style={styles.location}>{item.item.jumlah} Gabus</Text>
+        <Text style={styles.store}>{item.header.tanggal}</Text>
       </View>
     </View>
   );
@@ -47,27 +33,20 @@ function ItemList({ data }) {
       renderItem={renderItem}
       keyExtractor={item => item.id}
       contentContainerStyle={styles.listContainer}
+      style={{ flex: 1 }} // added flex:1 for full height and scroll
+      keyboardShouldPersistTaps="handled"
     />
   );
 }
 
-export default function CustomTabBar() {
+export default function CustomTabBar({ routes, loading, tabData }) {
   const translateY = useSharedValue(0);
   const startY = useSharedValue(0);
-  const expandedY = -SCREEN_HEIGHT * 0.58;
+  const expandedY = -SCREEN_HEIGHT * 0.58 + 36;
   const collapsedY = 0;
   const halfExpandedY = expandedY / 10;
   const { currentTab, setCurrentTab } = useGlobal();
   const { setIsAtTop } = useGlobal();
-
-  const routes = [
-    { key: 'Home', title: 'Home', content: <Text style={{color: 'white'}}>Home Content</Text> },
-    { key: 'Settings1', title: 'Settings 1', content: <Text style={{color: 'white'}}>Settings 1 Content</Text> },
-    { key: 'Settings2', title: 'Settings 2', content: <Text style={{color: 'white'}}>Settings 2 Content</Text> },
-    { key: 'Settings3', title: 'Settings 3', content: <Text style={{color: 'white'}}>Settings 3 Content</Text> },
-    { key: 'Settings4', title: 'Settings 4', content: <Text style={{color: 'white'}}>Settings 4 Content</Text> },
-  ];
-
   const onReachedTop = () => setIsAtTop(true);
   const setCollapsed = () => setIsAtTop(false);
 
@@ -126,16 +105,16 @@ export default function CustomTabBar() {
       </GestureDetector>
 
       <Animated.View style={[styles.tabBarContainer, containerAnimatedStyle]}>
-        <View style={{width: '91%', left: '4.5%'}}>
+        <View style={{width: '87%', left: '6.5%'}}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
             <View style={styles.tabBar}>
-              {routes.map((route) => {
+              {routes?.map((route) => {
                 const isFocused = currentTab === route.key;
                 const progress = progressValues[route.key];
-                
+
                 const animatedIconStyle = useAnimatedStyle(() => ({
                   transform: [
-                    { translateY: interpolate(progress.value, [0, 1], [-10, 10], Extrapolate.CLAMP) },
+                    { translateY: interpolate(progress.value, [0, 1], [4.5,24.5], Extrapolate.CLAMP) },
                     { scale: interpolate(progress.value, [0, 1], [1, 1.3], Extrapolate.CLAMP) },
                   ],
                 }));
@@ -143,11 +122,11 @@ export default function CustomTabBar() {
                 const animatedCircleStyle = useAnimatedStyle(() => ({
                   opacity: progress.value,
                   transform: [
-                    { translateY: interpolate(progress.value, [0, 1], [10, -1.4], Extrapolate.CLAMP) },
+                    { translateY: interpolate(progress.value, [0, 1], [10, 13.9], Extrapolate.CLAMP) },
                     { scale: interpolate(progress.value, [0, 1], [1, 1.3], Extrapolate.CLAMP) },
                   ],
                 }));
-                
+
                 return (
                   <TouchableOpacity
                     key={route.key}
@@ -178,7 +157,7 @@ export default function CustomTabBar() {
 const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
-    bottom: 20,
+    bottom: -SCREEN_HEIGHT * 0.58,
     left: 0,
     right: 0,
     shadowOffset: { width: 0, height: 10 },
@@ -190,7 +169,6 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     paddingHorizontal: 0,
-
   },
   tabBar: {
     flexDirection: 'row',
@@ -218,17 +196,16 @@ const styles = StyleSheet.create({
     zIndex: -1,
   },
   bar: {
-    position: 'absolute',
+    // Removed position absolute and bottom negative
     height: SCREEN_HEIGHT * 0.58 + 35,
     left: '2.5%',
     right: 0,
-    bottom: -SCREEN_HEIGHT * 0.58 - 20,
     width: '95%',
     borderTopLeftRadius: '5%',
     borderTopRightRadius: '5%',
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    zIndex: -1,
-  },
+    flexGrow: 1,
+  },  
   gestureOverlay: {
     position: 'absolute',
     bottom: 105,
@@ -238,12 +215,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     zIndex: 20,
   },
-    contentContainer: {
-    height: 300, // Sesuaikan tinggi sesuai kebutuhan
+  contentContainer: {
+    flex: 1,
     padding: 16,
   },
   listContainer: {
-    paddingBottom: 20,
+    paddingBottom: 0,
+    flexGrow: 1,
   },
   itemContainer: {
     marginBottom: 16,
@@ -278,3 +256,4 @@ const styles = StyleSheet.create({
     color: '#888',
   },
 });
+

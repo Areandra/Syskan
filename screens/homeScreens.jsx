@@ -5,8 +5,148 @@ import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { useGlobal } from '../service/GlobalContext';
 import CustomTabBar from '../components/CostumTabBar';
 import Header from '../components/Header';
+import TruckLoader from '../components/Loaders'
+import { collection, query, where, getDocs, getDoc, collectionGroup } from 'firebase/firestore';
+import { db } from '../service/firebase/firebaseConfig';
+import { useState, useEffect } from 'react'
 
 export default function HomeScreens({ isAtTop, navigation }) {
+  const [routes, setRoutes] = useState([]);
+  const {loading, setLoading, type, setCurrentTab } = useGlobal();
+  const [invoiceData, setInvoiceData] = useState({});
+  const [pengambilanUser, setPengambilanUser] = useState({})
+  const fetchLanggananUsers = async ({ role }) => {
+  const q = query(collection(db, 'users'), where('role', '==', role));
+  const querySnapshot = await getDocs(q);
+  
+  const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return data;
+};
+
+const fetchAllUserInvoices = async (useRootInvoices = false) => {
+  const querySnapshot = useRootInvoices
+    ? await getDocs(collection(db, 'invoice')) // 🔁 Koleksi root
+    : await getDocs(collectionGroup(db, 'invoices')); // 📦 Semua nested invoices
+
+  const data = await Promise.all(
+    querySnapshot.docs.map(async (docSnap) => {
+      try {
+        const parentUserRef = docSnap.ref.parent?.parent;
+        const isNested = !useRootInvoices;
+
+        let parentUserSnap = null;
+        if (isNested && parentUserRef) {
+          parentUserSnap = await getDoc(parentUserRef);
+        }
+
+        const userData = parentUserSnap?.exists() ? parentUserSnap.data() : null;
+        
+        const invoiceData = docSnap.data();
+
+return {
+  id: docSnap.id,
+  parentUserId: isNested ? parentUserRef?.id || 'Unknown' : 'Langsung',
+  userName: useRootInvoices ? invoiceData?.header?.pemasok || 'Tanpa Nama' : userData?.name || 'Tanpa Nama',
+  ...invoiceData,
+};
+        
+      } catch (err) {
+        console.error('Fetch error:', err.message);
+        return null;
+      }
+    })
+  );
+
+  // Filter null data
+  const filteredData = data.filter((d) => d !== null);
+
+  // Kelompokkan berdasarkan parentUserId
+  const tabData = {};
+  filteredData.forEach((invoice) => {
+    const id = invoice.parentUserId;
+    if (!tabData[id]) {
+      tabData[id] = [];
+    }
+    tabData[id].push(invoice);
+  });
+
+  return tabData;
+};
+
+const hitungTotalHargaPerUserDariData = (groupedInvoiceData) => {
+  const hasilAkhir = {};
+
+  Object.entries(groupedInvoiceData).forEach(([userId, invoiceList]) => {
+    let totalUser = 0;
+    console.log(`\n🔍 Menghitung untuk userId: ${userId}`);
+
+    invoiceList.forEach((invoice, i) => {
+      console.log(`  Invoice ke-${i + 1}:`, invoice);
+      invoice.items?.forEach((item, j) => {
+        const jumlah = parseFloat(item.jumlah);
+        const harga = parseFloat(item.harga);
+        const subtotal = jumlah * harga;
+
+        console.log(`    ➤ item-${j + 1}: jumlah=${jumlah}, harga=${harga}, subtotal=${subtotal}`);
+
+        if (!isNaN(jumlah) && !isNaN(harga)) {
+          totalUser += subtotal;
+        }
+      });
+    });
+
+    console.log(`  ✅ Total untuk ${userId}: ${totalUser}`);
+    hasilAkhir[userId] = totalUser;
+  });
+
+  return hasilAkhir;
+};
+
+  useEffect(() => {
+    if (!loading) return;
+  const fetchData = async () => {
+    try {
+      const users = await fetchLanggananUsers({ role: type === 'Penjualan' ? 'Langganan' : 'Pemasok' });
+      const defaultRoutes = {
+        key: 'Beranda',
+        title: 'Beranda',
+      };
+      const newRoutes = users.map(user => ({
+        key: user.id, // Gunakan ID user
+        title: user.name, // Tampilkan nama sebagai judul
+      }));
+      setRoutes([defaultRoutes, ...newRoutes]);
+
+      const invoiceDataByUser = await fetchAllUserInvoices( type === 'Penjualan' ? false : true );
+      setInvoiceData(invoiceDataByUser); // tabData = invoiceDataByUser
+      
+      const pengambilan = await hitungTotalHargaPerUserDariData(invoiceDataByUser);
+      setPengambilanUser(pengambilan);
+      console.log('Ini', pengambilan);
+      console.log(JSON.stringify(invoiceDataByUser, null, 2));
+    } catch (error) {
+      console.error('Fetch error:', error.message, error.stack);
+    } finally {
+      setCurrentTab('Beranda')
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, [loading]);
+
+  if (loading) {
+    return (
+      <LinearGradient
+      colors={['#0C324D', '#061b29', '#020202']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.container, {justifyContent: 'center', alignItems: 'center',}]}
+      >
+        <TruckLoader/>
+      </LinearGradient>
+    );
+  }
   return (
     <LinearGradient
       colors={['#0C324D', '#061b29', '#020202']}
@@ -17,7 +157,7 @@ export default function HomeScreens({ isAtTop, navigation }) {
         <Header title="Home Screen" navigation={navigation}/>
         <Debt curency="Rp" amount="1.400" />
         <InvoiceCard isAtTop={isAtTop}/>
-        <CustomTabBar />
+        <CustomTabBar routes={routes} loading={loading} tabData={invoiceData} />
     </LinearGradient>
   );
 }
@@ -44,7 +184,7 @@ const Debt = ({ curency, amount}) => {
 
     return { part1, part2 };
   }
-  const { part1, part2 } = formatNumber(1400);
+  const { part1, part2 } = formatNumber();
 
   return (
     <View style={DebtStyle.container}>
@@ -83,7 +223,7 @@ const CircleInformation = ({ title, subTitle, iconName, size }) => {
 }
 
 const InvoiceCard = () => {
-  const { type, setType, isAtTop } = useGlobal();
+  const { type, setType, isAtTop, loading, setLoading } = useGlobal();
   const changeType = () => {
     if (type === 'Penjualan') {
       setType('Pembelian');
@@ -91,6 +231,7 @@ const InvoiceCard = () => {
     else {
       setType('Penjualan');
     }
+    setLoading(true);
   }
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -107,7 +248,7 @@ const InvoiceCard = () => {
     <Animated.View style={[invoiceCardStyles.container, animatedStyle]}>
       {/* Side Buttons */}
       <View style={invoiceCardStyles.sideButtons}>
-        <TouchableOpacity disabled={type === 'penjualan'} onPress={changeType} style={[invoiceCardStyles.statusButton, { backgroundColor: type ==='Penjualan' ? '#6fffa4' : '#fff176' }]}>
+        <TouchableOpacity disabled={type === 'Penjualan'} onPress={changeType} style={[invoiceCardStyles.statusButton, { backgroundColor: type ==='Penjualan' ? '#6fffa4' : '#fff176' }]}>
           <Ionicons name="checkmark-circle" size={24} color="#000" />
           <Text style={invoiceCardStyles.sideText}>Penjualan</Text>
         </TouchableOpacity>
@@ -228,7 +369,6 @@ const DebtStyle = StyleSheet.create({
   sideText: {
     fontSize: 24,
     color: 'grey',
-    
   },
   centerText: {
     color: 'white',

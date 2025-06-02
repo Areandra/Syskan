@@ -13,15 +13,16 @@ const DraftInvoiceList = ({ drafts, onOpen, onDelete }) => {
   };
 
   return (
-      <FlatList
+    <FlatList
+      showsVerticalScrollIndicator={false}
       data={drafts}
       keyExtractor={item => item.key}
       renderItem={({ item }) => (
         <TouchableOpacity onLongPress={() => confirmDelete(item.key)} style={styles.card} onPress={() => onOpen(item.key)}>
           <Text style={styles.title}>{item.key}</Text>
-          <Text>Pemasok: {item.data.header.pemasok}</Text>
-          <Text>Sopir: {item.data.header.sopir}</Text>
-          <Text>Item: {item.data.items.length}</Text>
+          <Text style={{color: 'white'}}>{item.data.header.pemasok}</Text>
+          <Text style={{color: 'white'}}>Sopir: {item.data.header.sopir}</Text>
+          <Text style={{color: 'white'}}>Muatan: {item.data.items.length} Gabus</Text>
         </TouchableOpacity>
       )}
     />
@@ -30,12 +31,12 @@ const DraftInvoiceList = ({ drafts, onOpen, onDelete }) => {
 
 const styles = StyleSheet.create({
   card: { 
-    backgroundColor: '#fff', 
+    backgroundColor: 'rgba(255, 255, 255, 0.05)', 
     padding: 16, 
-    borderRadius: 12, 
+    borderRadius: 20, 
     marginBottom: 12 
   },
-  title: { fontWeight: 'bold' }
+  title: { fontWeight: 'bold', color: 'white', }
 });
 
 export default DraftInvoiceList;

@@ -7,7 +7,7 @@ import { GlobalProvider } from './service/GlobalContext';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-
+import BackHandlerProvider from './utils/BackHandlerProvider'
 import DraftInvoiceScreen from './screens/DraftInvoiceScreen';
 import NewInvoiceScreen from './screens/NewInvoiceScreen';
 
