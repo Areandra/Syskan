@@ -61,14 +61,14 @@ function ItemList({ data }) {
         onPress={() => toggleSelectItem(item.id)}
         style={[
           card.itemContainer,
-          isSelected && { backgroundColor: '#f5a8c650', borderWidth: 1, borderColor: '#f5a8c6' },
+          isSelected && { backgroundColor: '#1243754a', borderWidth: 1, borderColor: 'white' },
         ]}
       >
         <Text style={card.sopir}>{item.header.pemasok} {item.header.sopir}</Text>
         <Text style={card.name}>
           {item.item.ikan} {item.item.kualitas === 'Bagus' ? '' : item.item.kualitas}
         </Text>
-        <Text style={card.price}>Rp.{item.item.harga}.000,00</Text>
+        <Text style={card.price}>Rp. {Number(item.item.harga).toLocaleString('id-ID')}.000,00</Text>
         <View style={card.locationContainer}>
           <Text style={[card.location, {color: 'white'}]}>{item.item.jumlah} <Text style={card.location}>Gabus</Text></Text>
           <Text style={card.store}>{item.header.hari}, <Text style={{color: 'grey'}}>{item.header.tanggal},</Text> {item.header.jam}</Text>
@@ -153,7 +153,7 @@ const card = StyleSheet.create({
   },
   price: {
     fontSize: 16,
-    color: '#007AFF',
+    color: 'white',
     marginBottom: 4,
   },
   locationContainer: {
@@ -205,11 +205,80 @@ const dataContoh = [
   // Bisa ditambahkan dokumen lain
 ];
 
+function getRingkasanIkan(data) {
+  const ringkasan = {};
+
+  data.forEach(doc => {
+    doc.items.forEach(item => {
+      const key = `${item.ikan} (${item.kualitas})`;
+      if (!ringkasan[key]) {
+        ringkasan[key] = {
+          ikan: item.ikan,
+          kualitas: item.kualitas,
+          total: 0,
+          harga: item.harga,
+        };
+      }
+      ringkasan[key].total += item.jumlah;
+    });
+  });
+
+  return Object.values(ringkasan);
+}
+
+function groupByKey(items) {
+  return items.reduce((acc, item) => {
+    if (!acc[item.key]) acc[item.key] = [];
+    acc[item.key].push(item);
+    return acc;
+  }, {});
+}
+
 function InvoiceList() {
+  const [selectedIkan, setSelectedIkan] = useState(null);
+
+  if (!selectedIkan) {
+    const grouped = groupByKey(getRingkasanIkan(dataContoh));
+
+    return (
+      <ScrollView contentContainerStyle={styles1.container}>
+        {Object.entries(grouped).map(([key, items]) => (
+          <View key={key} style={styles1.groupContainer}>
+            <Text style={styles1.groupTitle}>Draft Key: {key}</Text>
+            {items.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                onLongPress={() => setSelectedIkan(item.ikan)}
+                style={styles1.itemRow}
+              >
+                <Text style={styles1.cell}>{item.ikan}</Text>
+                <Text style={styles1.cell}>({item.kualitas})</Text>
+                <Text style={styles1.cell}>Qty: {item.total}</Text>
+                <Text style={styles1.cell}>Rp {item.harga}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ))}
+      </ScrollView>
+    );
+  }
+
+  // Filter hanya item yang sesuai selected ikan
+  const groupedByKey = dataContoh
+    .map((doc) => {
+      const filteredItems = doc.items.filter(item => item.ikan === selectedIkan);
+      if (filteredItems.length === 0) return null;
+      return { ...doc, items: filteredItems };
+    })
+    .filter(Boolean);
+
   return (
-    <ScrollView contentContainerStyle={styles1.container}>
-      {dataContoh.map((doc, docIndex) => (
-        <View key={doc.key} style={styles.docContainer}>
+    <FlatList
+      data={groupedByKey}
+      keyExtractor={(item) => item.key}
+      contentContainerStyle={styles1.container}
+      renderItem={({ item: doc }) => (
+        <View style={styles1.docContainer}>
           {/* Header */}
           <View style={styles1.headerRow}>
             <Text style={styles1.headerText}>Pemasok: {doc.pemasok}</Text>
@@ -218,21 +287,31 @@ function InvoiceList() {
             <Text style={styles1.headerText}>Jam: {doc.jam}</Text>
           </View>
 
-          {/* Items */}
-          <View style={styles1.itemList}>
-            {doc.items.map((item, index) => (
-              <View key={index} style={styles1.itemRow}>
+          {/* List item detail */}
+          <FlatList
+            data={doc.items}
+            keyExtractor={(_, index) => `${doc.key}_${index}`}
+            renderItem={({ item }) => (
+              <View style={styles1.itemRow}>
                 <Text style={styles1.cell}>{item.langganan}</Text>
                 <Text style={styles1.cell}>{item.ikan}</Text>
                 <Text style={styles1.cell}>Qty: {item.jumlah}</Text>
                 <Text style={styles1.cell}>Rp {item.harga}</Text>
                 <Text style={styles1.cell}>{item.kualitas}</Text>
               </View>
-            ))}
-          </View>
+            )}
+          />
         </View>
-      ))}
-    </ScrollView>
+      )}
+      ListFooterComponent={() => (
+        <TouchableOpacity
+          style={{ marginTop: 16, alignSelf: 'center' }}
+          onPress={() => setSelectedIkan(null)}
+        >
+          <Text style={{ color: 'blue' }}>← Kembali</Text>
+        </TouchableOpacity>
+      )}
+    />
   );
 }
 

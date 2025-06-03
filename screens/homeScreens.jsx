@@ -235,7 +235,7 @@ const Debt = ({ curency, amount}) => {
       </View>
 
       <Animated.View style={[DebtStyle.information, animatedStyle]}>
-        <CircleInformation title="Pengguna" subTitle="Serkertaris" iconName="award" size={24} />
+        <CircleInformation title="User" subTitle="Serkertaris" iconName="award" size={24} />
         <CircleInformation title="Tipe" subTitle={type} iconName="activity" size={24} />
         <CircleInformation title="Anggota" subTitle={currentTab} iconName="user-check" size={24} />
       </Animated.View>
