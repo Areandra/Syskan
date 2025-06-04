@@ -1,24 +1,21 @@
-import { useRef, useState } from 'react';
-import { StyleSheet, View, TouchableOpacity, Text, ScrollView, Dimensions, FlatList, Alert } from 'react-native';
+import { useRef } from 'react';
+import { StyleSheet, View, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import Animated, { useSharedValue, withTiming, useAnimatedStyle, interpolate, Extrapolate, runOnJS, } from 'react-native-reanimated';
 import { useEffect } from 'react';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { useGlobal } from '../service/GlobalContext';
-import { db } from '../service/firebase/firebaseConfig';
-import { deleteDoc, doc } from 'firebase/firestore';
-import CircleButton from './button/CircleButton';
 import ItemList from './ItemList';
 import InvoiceList from './InvoiceList';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export default function CustomTabBar({ routes, loading, tabData }) {
+export default function CustomTabBar({ routes, allInvoiceDatas, tabData }) {
   const translateY = useSharedValue(0);
   const startY = useSharedValue(0);
   const expandedY = -SCREEN_HEIGHT * 0.59 + 36;
   const collapsedY = 0;
   const halfExpandedY = expandedY / 10;
-  const { currentTab, setCurrentTab } = useGlobal();
+  const { currentTab, setCurrentTab, type } = useGlobal();
   const { setIsAtTop } = useGlobal();
   const onReachedTop = () => setIsAtTop(true);
   const setCollapsed = () => setIsAtTop(false);
@@ -119,8 +116,8 @@ export default function CustomTabBar({ routes, loading, tabData }) {
         </View>
         <View style={styles.bar}>
           { currentTab === 'Beranda' 
-            ? ( <InvoiceList /> )
-            : ( <ItemList data={tabData[currentTab]} /> )
+            ? ( <InvoiceList dataContoh={allInvoiceDatas} /> )
+            : ( type === 'Penjualan' ? <ItemList data={tabData[currentTab]} /> : <InvoiceList dataContoh={allInvoiceDatas} /> )
           }
         </View>
       </Animated.View>

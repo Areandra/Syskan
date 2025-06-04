@@ -47,13 +47,17 @@ const InvoiceItemRow = ({ item, index, onUpdate, onDelete, listHarga }) => {
     onUpdate(index, { ...item, [field]: value });
   };
 
-  useEffect(() => {
+useEffect(() => {
+  console.log('Checking harga untuk:', item.ikan, item.kualitas);
   const key = `${item.ikan} ${item.kualitas}`;
   const hargaBaru = listHarga?.[key];
+  console.log('Harga ditemukan:', hargaBaru);
+
   if (hargaBaru !== undefined && item.harga !== hargaBaru) {
     handleChange('harga', hargaBaru);
   }
 }, [item.ikan, item.kualitas, listHarga]);
+
   
   return (
     <TouchableOpacity

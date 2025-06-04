@@ -4,10 +4,12 @@ import { useGlobal } from '../service/GlobalContext';
 import { db } from '../service/firebase/firebaseConfig';
 import { deleteDoc, doc } from 'firebase/firestore';
 import CircleButton from './button/CircleButton';
+import InvoiceInputModal from './modal/NewManualInvoice';
 
 export default function ItemList({ data }) {
   const { currentTab, setUpdate } = useGlobal();
   const [selectedIds, setSelectedIds] = useState([]);
+  const [visibleModal, setVisibleModal] = useState(false);
 
   const toggleSelectItem = (id) => {
     setSelectedIds((prev) =>
@@ -39,7 +41,6 @@ export default function ItemList({ data }) {
               await Promise.all(deletePromises);
               setSelectedIds([]);
               setUpdate(prev => !prev);
-              console.log("✅ Item berhasil dihapus");
             } catch (error) {
               console.error("❌ Gagal menghapus:", error);
             }
@@ -83,11 +84,16 @@ export default function ItemList({ data }) {
             <View style={card.buttonContainer}>
               <CircleButton
                 onPress={deleteSelectedItems}
+                iconName="percent"
+                style={{ marginRight: 10 }}
+              />
+              <CircleButton
+                onPress={deleteSelectedItems}
                 iconName="trash-2"
                 style={{ marginRight: 10 }}
               />
               <CircleButton
-                onPress={() => setVisiblePlus(true)}
+                onPress={() => setVisibleModal(true)}
                 iconName="plus"
               />
             </View>
@@ -101,6 +107,7 @@ export default function ItemList({ data }) {
         style={{ flex: 1 }}
         keyboardShouldPersistTaps="handled"
       />
+      <InvoiceInputModal currentTab={currentTab} visible={visibleModal} onClose={()=>{setVisibleModal(false)}} />
     </View>
   );
 }

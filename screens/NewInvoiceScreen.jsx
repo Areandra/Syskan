@@ -38,12 +38,15 @@ const NewInvoiceScreen = ({ route, navigation }) => {
 
   const addItem = () => setItems([...items, { langganan: '', ikan: '', jumlah: 1, kualitas: 'Bagus' }]);
 
-  const updateItem = (index, updated) => {
-    const newItems = [...items];
+const updateItem = (index, updated) => {
+  setItems(prevItems => {
+    const newItems = [...prevItems];
     newItems[index] = updated;
-    setItems(newItems);
-    saveDraft(draftKey, { header, items: newItems });
-  };
+    saveDraft(draftKey, { header, items: newItems }); // pindahkan saveDraft ke sini supaya pakai newItems terbaru
+    return newItems;
+  });
+};
+
 
   const deleteItem = index => {
     const newItems = items.filter((_, i) => i !== index);
@@ -55,17 +58,6 @@ const NewInvoiceScreen = ({ route, navigation }) => {
     setHeader(data);
     setDraftKey(data.key);
     await saveDraft(data.key, { header: data, items: [] });
-  };
-  
-  const getHargaOptions = () => {
-    const map = {};
-    items.forEach(({ ikan, kualitas }) => {
-      if (ikan && kualitas) {
-        const key = `${ikan} ${kualitas}`;
-        if (!map[key]) map[key] = '';
-      }
-    });
-    return map;
   };
   
   const handleHarga = () => {
@@ -81,7 +73,6 @@ const NewInvoiceScreen = ({ route, navigation }) => {
   };
   
   const handleSubmitToFirestore = async () => {  
-    console.log('Data to Firestore:', JSON.stringify({ header, items }, null, 2));
     try {
       await setDoc(doc(db, 'invoice', draftKey), {
         header,
@@ -96,7 +87,7 @@ const NewInvoiceScreen = ({ route, navigation }) => {
         });
       }
       await deleteDraft(draftKey);
-      navigation.navigate('DraftInvoiceScreen');
+      navigation.goBack();
     } catch (error) {
       console.error("Error menyimpan ke Firestore:", error);
       Alert.alert("Error", "Gagal menyimpan invoice ke Firestore.");

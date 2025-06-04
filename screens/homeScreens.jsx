@@ -17,6 +17,7 @@ export default function HomeScreens({ navigation }) {
   const [invoiceData, setInvoiceData] = useState({});
   const [first, setFirst] = useState(true);
   const [pengambilanUser, setPengambilanUser] = useState({});
+  const [allInvoiceData, setAllInvoiceData] = useState(null);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -33,26 +34,68 @@ export default function HomeScreens({ navigation }) {
     return data;
   };
 
+  const fetchInvoice = async () => {
+    const snapshot = await getDocs(collection(db, "invoice"));
 
-  const fetchAllUserInvoices = async (useRootInvoices = false) => {
-    const querySnapshot = useRootInvoices
-      ? await getDocs(collection(db, 'invoice')) 
-      : await getDocs(collectionGroup(db, 'invoices')); 
+    const dataContoh = snapshot.docs.map((doc) => {
+      const data = doc.data();
+
+      return {
+        key: data.header.key,
+        hari: data.header.hari,
+        jam: data.header.jam,
+        pemasok: data.header.pemasok,
+        sopir: data.header.sopir,
+        tanggal: data.header.tanggal,
+        items: data.items || [],
+      };
+    });
+    dataContoh.sort((b, a) => new Date(`${a.tanggal} ${a.jam}`) - new Date(`${b.tanggal} ${b.jam}`));
+
+    return dataContoh;
+  };
+
+  const kelompokkanDataBerdasarkanPemasok = (data) => {
+  const hasil = {};
+
+  data.forEach((invoice) => {
+    const pemasok = invoice.pemasok || "Tanpa Pemasok";
+
+    if (!hasil[pemasok]) {
+      hasil[pemasok] = [];
+    }
+
+    if (Array.isArray(invoice.items)) {
+      invoice.items.forEach((item) => {
+        hasil[pemasok].push({
+          ...item,
+          tanggal: invoice.tanggal,
+          jam: invoice.jam,
+          sopir: invoice.sopir,
+          key: invoice.key,
+        });
+      });
+    }
+  });
+
+  return hasil;
+};
+
+
+  const fetchAllUserInvoices = async () => {
+    const querySnapshot = await getDocs(collectionGroup(db, 'invoices')); 
     const data = await Promise.all(
       querySnapshot.docs.map(async (docSnap) => {
         try {
           const parentUserRef = docSnap.ref.parent?.parent;
-          const isNested = !useRootInvoices;
-          let parentUserSnap = null;
-          if (isNested && parentUserRef) {
+          if (parentUserRef) {
             parentUserSnap = await getDoc(parentUserRef);
           }
-          const userData = parentUserSnap?.exists() ? parentUserSnap.data() : null;
           const invoiceData = docSnap.data();
           return {
             id: docSnap.id,
-            parentUserId: isNested ? parentUserRef?.id || 'Unknown' : 'Langsung',
-            userName: useRootInvoices ? invoiceData?.header?.pemasok || 'Tanpa Nama' : userData?.name || 'Tanpa Nama',
+            parentUserId: parentUserRef?.id,
+            userName: invoiceData?.header?.pemasok || 'Tanpa Nama',
             ...invoiceData,
           };
         } catch (err) {
@@ -62,6 +105,7 @@ export default function HomeScreens({ navigation }) {
       })
     );
     const filteredData = data.filter((d) => d !== null);
+    filteredData.sort((b, a) => new Date(`${a.header.tanggal} ${a.header.jam}`) - new Date(`${b.header.tanggal} ${b.header.jam}`));
     const tabData = {};
     filteredData.forEach((invoice) => {
       const id = invoice.parentUserId;
@@ -75,24 +119,20 @@ export default function HomeScreens({ navigation }) {
 
   const hitungTotalHargaPerUserDariData = (groupedInvoiceData) => {
     const hasilAkhir = {};
-    Object.entries(groupedInvoiceData).forEach(([userId, invoiceList]) => {
+    Object.entries(groupedInvoiceData).forEach(([pemasok, invoiceList]) => {
       let totalUser = 0;
-      console.log(`\n🔍 Menghitung untuk userId: ${userId}`);
       invoiceList.forEach((invoice, i) => {
-        console.log(`  Invoice ke-${i + 1}:`, invoice);
-        const item = invoice.item;
+        const item = type === 'Penjualan' ? invoice.item : invoice;
         if (item) {
           const jumlah = parseFloat(item.jumlah);
           const harga = parseFloat(item.harga);
           const subtotal = jumlah * harga;
-          console.log(`    ➤ item: jumlah=${jumlah}, harga=${harga}, subtotal=${subtotal}`);
           if (!isNaN(jumlah) && !isNaN(harga)) {
             totalUser += subtotal;
           }
         }
       });
-      console.log(`  ✅ Total untuk ${userId}: ${totalUser}`);
-      hasilAkhir[userId] = totalUser;
+      hasilAkhir[pemasok] = totalUser;
     });
     return hasilAkhir;
   };
@@ -102,7 +142,6 @@ export default function HomeScreens({ navigation }) {
     const fetchData = async () => {
       try {
         const users = await fetchLanggananUsers({ role: type === 'Penjualan' ? 'Langganan' : 'Pemasok' });
-        console.log(JSON.stringify(users, null, 2));
         const defaultRoutes = {
           key: 'Beranda',
           title: 'Beranda',
@@ -112,13 +151,14 @@ export default function HomeScreens({ navigation }) {
           title: user.name,
         }));
         setRoutes([defaultRoutes, ...newRoutes]);
-        const invoiceDataByUser = await fetchAllUserInvoices( type === 'Penjualan' ? false : true );
+        const invoiceDataByUser = await fetchAllUserInvoices();
         setInvoiceData(invoiceDataByUser); 
-        const pengambilan = hitungTotalHargaPerUserDariData(invoiceDataByUser);
+        const allInvoiceDatas = await fetchInvoice();
+        setAllInvoiceData(allInvoiceDatas);
+        const pengambilan = hitungTotalHargaPerUserDariData(type === 'Penjualan' ? invoiceDataByUser : kelompokkanDataBerdasarkanPemasok(allInvoiceDatas) );
         const totalSemuaUser = Object.values(pengambilan).reduce((acc, val) => acc + val, 0);
         const allPengambilan = { Beranda: totalSemuaUser,...pengambilan };
         setPengambilanUser(allPengambilan);
-        console.log('Ini', allPengambilan);
       } catch (error) {
         console.error('Fetch error:', error.message, error.stack);
       } finally {
@@ -136,13 +176,14 @@ export default function HomeScreens({ navigation }) {
     }
     const fetchData = async () => {
       try {
-        const invoiceDataByUser = await fetchAllUserInvoices( type === 'Penjualan' ? false : true );
+        const invoiceDataByUser = await fetchAllUserInvoices();
         setInvoiceData(invoiceDataByUser); 
         const pengambilan = hitungTotalHargaPerUserDariData(invoiceDataByUser);
         const totalSemuaUser = Object.values(pengambilan).reduce((acc, val) => acc + val, 0);
         const allPengambilan = { Beranda: totalSemuaUser,...pengambilan };
         setPengambilanUser(allPengambilan);
-        console.log('Ini', allPengambilan);
+        const allInvoiceDatas = await fetchInvoice();
+        setAllInvoiceData(allInvoiceDatas);
       } catch (error) {
         console.error('Fetch error:', error.message, error.stack);
       }
@@ -187,7 +228,7 @@ export default function HomeScreens({ navigation }) {
         />
         <Debt curency="Rp" amount={pengambilanUser[currentTab]} />
         <InvoiceCard />
-        <CustomTabBar routes={routes} loading={loading} tabData={invoiceData} />
+        <CustomTabBar routes={routes} loading={loading} tabData={invoiceData} allInvoiceDatas={allInvoiceData} />
     </LinearGradient>
   );
 }

@@ -1,103 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View, TouchableOpacity, Text, FlatList, Modal, TextInput } from 'react-native';
 import CircleButton from './button/CircleButton';
-
-const dataContoh = [
-  {
-    key: 'Masuk SGT Udin Senin 2025-06-02 18:00',
-    hari: 'Senin',
-    jam: '18:00',
-    pemasok: 'SGT',
-    sopir: 'Udin',
-    tanggal: '2025-06-02',
-    items: [
-      {
-        langganan: 'Dayat',
-        ikan: 'Tuna',
-        jumlah: 1,
-        harga: '2000',
-        kualitas: 'Bagus',
-      },
-      {
-        langganan: 'Dayat',
-        ikan: 'Kerapu',
-        jumlah: 1,
-        harga: '1500',
-        kualitas: 'Bagus',
-      },
-      {
-        langganan: 'Dayat',
-        ikan: 'Kerapu',
-        jumlah: 1,
-        harga: '1500',
-        kualitas: 'Bagus',
-      },
-    ],
-  },
-  {
-    key: 'Masuk SGT Udin Senin 2025-06-03 18:00',
-    hari: 'Selasa',
-    jam: '18:00',
-    pemasok: 'SGT',
-    sopir: 'Udin',
-    tanggal: '2025-06-03',
-    items: [
-      {
-        langganan: 'Dayat',
-        ikan: 'Tuna',
-        jumlah: 1,
-        harga: '2000',
-        kualitas: 'Bagus',
-      },
-      {
-        langganan: 'Dayat',
-        ikan: 'Kerapu',
-        jumlah: 1,
-        harga: '1500',
-        kualitas: 'Bagus',
-      },
-      {
-        langganan: 'Dayat',
-        ikan: 'Kerapu',
-        jumlah: 1,
-        harga: '1500',
-        kualitas: 'Bagus',
-      },
-    ],
-  },
-  {
-    key: 'Masuk SGT Udin Senin 2025-06-04 18:00',
-    hari: 'Selasa',
-    jam: '18:00',
-    pemasok: 'SGT',
-    sopir: 'Udin',
-    tanggal: '2025-06-03',
-    items: [
-      {
-        langganan: 'Dayat',
-        ikan: 'Tuna',
-        jumlah: 1,
-        harga: '2000',
-        kualitas: 'Bagus',
-      },
-      {
-        langganan: 'Dayat',
-        ikan: 'Kerapu',
-        jumlah: 1,
-        harga: '1500',
-        kualitas: 'Bagus',
-      },
-      {
-        langganan: 'Dayat',
-        ikan: 'Kerapu',
-        jumlah: 1,
-        harga: '1500',
-        kualitas: 'Bagus',
-      },
-    ],
-  },
-  // Bisa ditambahkan dokumen lain
-];
+import { useGlobal } from '../service/GlobalContext';
 
 function getRingkasanIkan(data) {
   const ringkasan = {};
@@ -120,15 +24,8 @@ function getRingkasanIkan(data) {
   return Object.values(ringkasan);
 }
 
-function groupByKey(items) {
-  return items.reduce((acc, item) => {
-    if (!acc[item.key]) acc[item.key] = [];
-    acc[item.key].push(item);
-    return acc;
-  }, {});
-}
-
-export default function InvoiceList() {
+export default function InvoiceList({dataContoh}) {
+  const { type, currentTab } = useGlobal();
   const [selectedIkan, setSelectedIkan] = useState(null);
   const [itemDimensions, setItemDimensions] = useState({ width: 0, height: 0 });
   const [searchQuery, setSearchQuery] = useState('');
@@ -139,6 +36,14 @@ export default function InvoiceList() {
   });
   const [showFilterModal, setShowFilterModal] = useState(false);
   
+  useEffect(() => {
+  if (type !== 'Penjualan') {
+    setFilterCriteria(prev => ({
+      ...prev,
+      pemasok: currentTab !== 'Beranda' ? currentTab : ''
+    }));
+  }
+}, [currentTab]);
 
   const filterData = (data) => {
     return data.filter(doc => {
@@ -165,7 +70,6 @@ export default function InvoiceList() {
 
   const renderItem = ({ item: doc }) => {
     const ringkasan = getRingkasanIkan([doc]); // Ringkasan per draft
-    console.log(ringkasan);
     const totalGabus = (ringkasan) => ringkasan.reduce((sum, item) => sum + item.total, 0);
 
     return (
@@ -177,7 +81,7 @@ export default function InvoiceList() {
         style={[
           styles.groupContainer,
           itemDimensions.width > 0 && {
-            borderRadius: Math.min(itemDimensions.width, itemDimensions.height) / 5.5
+            borderRadius: Math.min(itemDimensions.width, itemDimensions.height) / 6
           }
         ]}
       >
@@ -213,7 +117,7 @@ export default function InvoiceList() {
         <View style={styles.headerContainer}>
           <Text style={styles.title}>Aktivitas Terakhir</Text>
           <View style={styles.headerRow}>
-            <Text style={styles.title}>{dataContoh.length} <Text style={{ color: 'grey', fontSize: 18 }}>Partai</Text></Text>
+            <Text style={styles.title}>{filteredData.length} <Text style={{ color: 'grey', fontSize: 18 }}>Partai</Text></Text>
             <View style={styles.buttonContainer}>
               <CircleButton iconName="trash-2" style={{ marginRight: 10 }} />
               <CircleButton iconName="filter" onPress={() => setShowFilterModal(true)} />
@@ -350,7 +254,7 @@ const styles = StyleSheet.create({
     paddingBottom: 50,
   },
   groupContainer: {
-    marginBottom: 16,
+    marginBottom: 2,
     padding: 25,
     backgroundColor: 'rgba(80, 80, 80, 0.3)',
   },
