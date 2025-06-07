@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "509498700014",
+    "project_id": "syska-df9c1",
+    "storage_bucket": "syska-df9c1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:509498700014:android:94f99dcd44e13e314ac3ff",
+        "android_client_info": {
+          "package_name": "com.ddajb.syska"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLXJeSLc_rPMhLV8aLlN6NKA9rkwI-D1s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
